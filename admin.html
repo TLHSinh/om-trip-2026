@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC ADMIN - OM TRIP 2026 Quản Trị Trao Giải Realtime</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QRCode Generator Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- MQTT.js for Zero-Config Cloud Realtime Sync -->
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        omBlue: '#0077B6',
+                        omDarkBlue: '#03045E',
+                        omLightBlue: '#00B4D8',
+                        omCyan: '#90E0EF',
+                        omYellow: '#FFB703',
+                        omOrange: '#FB8500',
+                        omBg: '#CAF0F8'
+                    },
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #0077B6 0%, #00B4D8 50%, #90E0EF 100%);
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #CAF0F8;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0077B6;
+            border-radius: 4px;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 antialiased flex flex-col min-h-screen">
+
+    <!-- Top Banner Header (Dành riêng cho BTC Admin) -->
+    <header
+        class="bg-omDarkBlue/95 backdrop-blur-md text-white shadow-lg sticky top-0 z-50 border-b border-omLightBlue/30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div
+                    class="bg-omYellow text-omDarkBlue p-2.5 rounded-xl font-black text-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-lg font-black tracking-wider text-omYellow uppercase">OM TRIP 2026</h1>
+                        <span class="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded uppercase">BTC
+                            Admin</span>
+                    </div>
+                    <p class="text-xs text-omCyan font-medium">Hệ Thống Điều Khiển Thứ Hạng & Trao Giải Realtime</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- Trạng thái đồng bộ Realtime -->
+                <div
+                    class="px-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-[11px] font-bold flex items-center space-x-2">
+                    <span id="syncDot" class="w-2.5 h-2.5 bg-amber-400 rounded-full animate-pulse"></span>
+                    <span id="syncText" class="text-omCyan">Đang kết nối...</span>
+                </div>
+
+                <!-- Mở trang Người Chơi ở tab mới -->
+                <a id="openPlayerPageLink" href="index.html" target="_blank"
+                    class="px-3.5 py-2 bg-omYellow text-omDarkBlue rounded-xl font-extrabold text-xs shadow hover:bg-yellow-400 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-up-right-from-square"></i>
+                    <span>Mở Trang Người Chơi</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 sm:p-6 my-auto">
+
+        <!-- 1. MÀN HÌNH ĐĂNG NHẬP BTC -->
+        <div id="adminLoginCard"
+            class="bg-white/95 backdrop-blur-md rounded-3xl p-8 shadow-2xl border-4 border-omDarkBlue max-w-md mx-auto text-center my-8">
+            <div
+                class="w-16 h-16 bg-omDarkBlue text-omYellow rounded-2xl mx-auto flex items-center justify-center text-2xl mb-4 shadow">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3 class="text-2xl font-black text-omDarkBlue mb-2">Khu Vực BTC Quản Trị</h3>
+            <p class="text-xs text-slate-600 mb-6">Nhập mật khẩu BTC để cấu hình thứ hạng 4 đội và điều khiển công bố
+                giải thưởng Realtime.</p>
+
+            <form onsubmit="event.preventDefault(); verifyAdminPassword();" class="space-y-4">
+                <input type="password" id="adminPasswordInput" placeholder="Mật khẩu BTC (mặc định: admin123)"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-omDarkBlue text-sm font-medium">
+                <button type="submit"
+                    class="w-full py-3 bg-omDarkBlue hover:bg-blue-950 text-white font-bold rounded-xl shadow transition">
+                    ĐĂNG NHẬP QUẢN TRỊ
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. BẢNG ĐIỀU KHIỂN CHÍNH (ADMIN DASHBOARD) -->
+        <div id="adminDashboardPanel" class="hidden space-y-6">
+
+            <!-- Thanh Điều Khiển Trạng Thái Realtime -->
+            <div
+                class="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-omLightBlue flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center space-x-4">
+                    <div id="liveStateBadge"
+                        class="px-4 py-2 rounded-2xl font-black text-xs uppercase flex items-center space-x-2 bg-amber-100 text-amber-800 border border-amber-300">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                        <span>ĐANG KHÓA (CHỜ CÔNG BỐ)</span>
+                    </div>
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-black text-omDarkBlue">Bảng Điều Khiển BTC (Realtime Sync)
+                        </h3>
+                        <p class="text-xs text-slate-500">Mọi thao tác lưu hoặc Publish sẽ tự động cập nhật tức thì sang
+                            điện thoại của 4 đội chơi.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="publishResults()"
+                        class="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black rounded-xl shadow-lg transition flex items-center space-x-2 text-xs sm:text-sm">
+                        <i class="fa-solid fa-bullhorn text-omYellow"></i>
+                        <span>PUBLISH KẾT QUẢ</span>
+                    </button>
+
+                    <button onclick="unpublishResults()"
+                        class="px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow transition flex items-center space-x-1.5 text-xs sm:text-sm">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Khóa Lại</span>
+                    </button>
+
+                    <button onclick="triggerRemoteConfetti()"
+                        class="px-4 py-3 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-black rounded-xl shadow transition flex items-center space-x-1.5 text-xs sm:text-sm"
+                        title="Bắn pháo hoa đồng loạt trên màn hình tất cả người chơi">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Bắn Pháo Hoa</span>
+                    </button>
+
+                    <button onclick="logoutAdmin()"
+                        class="px-3.5 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs sm:text-sm transition"
+                        title="Đăng xuất">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Grid: Cấu hình 4 đội (2 cột) & Công cụ QR / Xem thử (1 cột) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Cột Trái (2/3): Setup Thứ Hạng & Giải Thưởng 4 Đội -->
+                <div
+                    class="lg:col-span-2 bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-xl border-2 border-omLightBlue space-y-5">
+                    <div class="flex flex-wrap justify-between items-center border-b pb-4 gap-3">
+                        <div>
+                            <h4 class="text-lg font-black text-omDarkBlue flex items-center space-x-2">
+                                <i class="fa-solid fa-trophy text-omYellow"></i>
+                                <span>Setup Điểm 3 Vòng, Mật Khẩu & Giải Thưởng 4 Đội</span>
+                            </h4>
+                            <p class="text-xs text-slate-500 mt-0.5">Cập nhật điểm từng vòng Realtime cho mỗi đội. Mỗi đội dùng mật khẩu riêng để vào xem điểm và mở giải thưởng!</p>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" onclick="autoAssignPrizesByScore()"
+                                class="px-3.5 py-2 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-black rounded-xl text-xs shadow transition flex items-center space-x-1.5"
+                                title="Tự động tính tổng điểm 3 vòng và gán Giải Nhất, Nhì, Ba, Khuyến Khích tương ứng">
+                                <i class="fa-solid fa-wand-Sparkles"></i>
+                                <span>⚡ Tự Xếp Giải Theo Tổng Điểm</span>
+                            </button>
+
+                            <div
+                                class="flex items-center space-x-2 bg-omBg/60 px-3.5 py-2 rounded-xl border border-omLightBlue/40">
+                                <input type="checkbox" id="hideRankOnCardCheckbox" onchange="saveTeamConfigsRealtime(false)"
+                                    class="w-4 h-4 accent-omDarkBlue rounded cursor-pointer">
+                                <label for="hideRankOnCardCheckbox"
+                                    class="text-xs font-bold text-omDarkBlue cursor-pointer select-none">
+                                    Giấu thứ hạng ngoài bìa
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="teamsConfigContainer" class="space-y-4">
+                        <!-- Populated via JS -->
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-center pt-3 border-t gap-3">
+                        <button onclick="resetToDefaultState()"
+                            class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>Khôi Phục Mặc Định
+                        </button>
+
+                        <div class="flex items-center space-x-3">
+                            <button onclick="saveTeamConfigsRealtime(true)"
+                                class="px-6 py-3 bg-omBlue hover:bg-omDarkBlue text-white font-black rounded-xl text-sm shadow-lg transition flex items-center space-x-2">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                                <span>LƯU & ĐỒNG BỘ REALTIME</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột Phải (1/3): Xem trước phong bì & QR Code cho Người Chơi -->
+                <div class="space-y-6">
+
+                    <!-- CẤU HÌNH LIÊN KẾT GOOGLE SHEET -->
+                    <div
+                        class="bg-white/95 backdrop-blur-md rounded-3xl p-5 shadow-xl border-2 border-emerald-400 space-y-3 text-left">
+                        <div class="flex items-center space-x-2 text-emerald-800">
+                            <i class="fa-solid fa-table text-lg text-emerald-600"></i>
+                            <h4 class="text-sm font-black text-omDarkBlue">Kết Nối Google Sheet Database</h4>
+                        </div>
+                        <p class="text-[11px] text-slate-500 leading-relaxed">
+                            Dán link Web App Apps Script để đồng bộ với Google Sheet (hoặc điền vào dòng 10 file <code
+                                class="bg-slate-100 px-1 py-0.5 rounded text-slate-700">sync.js</code>):
+                        </p>
+                        <div class="space-y-2">
+                            <input type="text" id="googleSheetUrlInput"
+                                placeholder="https://script.google.com/macros/s/.../exec"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:border-emerald-500">
+                            <div class="flex gap-2">
+                                <button type="button" onclick="saveGoogleSheetUrlFromAdmin()"
+                                    class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
+                                    Lưu & Kết Nối
+                                </button>
+                                <button type="button" onclick="testGoogleSheetConnection()"
+                                    class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+                                    Kiểm Tra
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BẢNG XEM TRƯỚC (PREVIEW) CHO BTC -->
+                    <div
+                        class="bg-gradient-to-br from-omDarkBlue to-omBlue text-white rounded-3xl p-6 shadow-xl border-2 border-omYellow space-y-4 text-center">
+                        <div
+                            class="w-12 h-12 bg-omYellow text-omDarkBlue rounded-xl mx-auto flex items-center justify-center text-xl font-black shadow">
+                            <i class="fa-solid fa-eye"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-base font-black text-omYellow">Xem Thử Phong Bì (Preview)</h4>
+                            <p class="text-xs text-omCyan mt-1">Kiểm tra giao diện mở phong bì của từng đội ngay tại đây
+                                trước khi bấm Publish.</p>
+                        </div>
+                        <div class="space-y-2.5 pt-1">
+                            <select id="adminPreviewTeamSelect"
+                                class="w-full px-3 py-2.5 rounded-xl bg-white text-omDarkBlue font-bold text-xs border focus:outline-none">
+                                <!-- Populated -->
+                            </select>
+                            <button onclick="openAdminPreviewModal()"
+                                class="w-full py-2.5 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-black rounded-xl text-xs shadow transition flex items-center justify-center space-x-1.5">
+                                <i class="fa-solid fa-play"></i>
+                                <span>XEM THỬ PHONG BÌ ĐỘI NÀY</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MÃ QR DẪN TỚI TRANG NGƯỜI CHƠI -->
+                    <div
+                        class="bg-white/95 backdrop-blur-md rounded-3xl p-6 shadow-xl border-2 border-omLightBlue flex flex-col items-center justify-between space-y-4 text-center">
+                        <div>
+                            <span
+                                class="bg-omBg text-omBlue px-3 py-0.5 rounded-full text-[10px] font-black uppercase">Dành
+                                Cho 4 Đội Chơi</span>
+                            <h4 class="text-base font-black text-omDarkBlue mt-1">Mã QR Trang Người Chơi</h4>
+                            <p class="text-xs text-slate-500">Đội chơi quét mã này sẽ vào thẳng trang mở phong bì (không
+                                thấy trang Admin).</p>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-2xl shadow-inner border-2 border-slate-200 inline-block">
+                            <div id="qrcode" class="flex justify-center items-center"></div>
+                        </div>
+
+                        <div class="w-full space-y-2 text-left">
+                            <label class="block text-[11px] font-bold text-slate-500">Link Trang Người Chơi
+                                (index.html):</label>
+                            <input type="text" id="playerUrlInput" readonly
+                                class="w-full text-center px-3 py-2 bg-slate-100 rounded-lg text-xs font-mono text-slate-600 border" />
+                            <button onclick="copyPlayerUrl()"
+                                class="w-full py-2.5 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-extrabold rounded-xl text-xs shadow transition">
+                                <i class="fa-solid fa-copy mr-1"></i> Sao Chép Link Người Chơi
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 text-white/80 text-xs font-medium space-y-1">
+        <p>OM TRIP 2026 - Bảng Điều Khiển Dành Riêng Cho Ban Tổ Chức</p>
+    </footer>
+
+    <!-- Modal Xem Thử Phong Bì (Preview ngay trong trang Admin) -->
+    <div id="previewModal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div
+            class="bg-gradient-to-br from-omDarkBlue to-omBlue rounded-3xl p-8 max-w-md w-full shadow-2xl text-center text-white border-4 border-omYellow relative space-y-4">
+            <button onclick="closePreviewModal()"
+                class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div
+                class="inline-block bg-omYellow text-omDarkBlue px-4 py-1 rounded-full text-xs font-black uppercase shadow">
+                👁️ CHẾ ĐỘ XEM THỬ (BTC PREVIEW)
+            </div>
+            <h3 id="previewTeamName" class="text-2xl font-black text-white"></h3>
+            <div class="bg-white/10 p-5 rounded-2xl border border-white/20 space-y-2">
+                <span id="previewRankBadge"
+                    class="inline-block bg-amber-400 text-omDarkBlue px-3 py-0.5 rounded-full text-xs font-black uppercase"></span>
+                <h4 id="previewPrizeTitle" class="text-xl font-black text-omYellow"></h4>
+                <p id="previewPrizeDesc" class="text-base sm:text-lg text-omYellow font-black leading-relaxed"></p>
+            </div>
+            <button onclick="closePreviewModal()"
+                class="w-full py-2.5 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-black rounded-xl text-xs shadow">
+                ĐÓNG XEM THỬ
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Notification Modal -->
+    <div id="notificationModal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div
+            class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 border-4 border-omYellow animate-float">
+            <div id="modalIcon"
+                class="w-16 h-16 bg-omYellow text-omDarkBlue rounded-full mx-auto flex items-center justify-center text-2xl shadow">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 id="modalTitle" class="text-xl font-black text-omDarkBlue">Thông Báo</h3>
+            <p id="modalMessage" class="text-sm text-slate-600 leading-relaxed"></p>
+            <button onclick="closeModal()"
+                class="w-full py-2.5 bg-omBlue hover:bg-omDarkBlue text-white font-bold rounded-xl text-sm shadow">
+                ĐỒNG Ý
+            </button>
+        </div>
+    </div>
+
+    <!-- Shared Sync Logic -->
+    <script src="sync.js"></script>
+
+    <!-- Admin Application Logic -->
+    <script>
+        let isEditingForm = false;
+
+        const syncEngine = new OMRealtimeSync(
+            (newState) => {
+                // Tránh ghi đè form khi BTC đang gõ phím
+                if (!isEditingForm) {
+                    renderAdminDashboard(newState);
+                } else {
+                    updatePublishBanner(newState);
+                }
+            },
+            (status, label) => {
+                const dot = document.getElementById("syncDot");
+                const text = document.getElementById("syncText");
+                if (!dot || !text) return;
+                text.textContent = label;
+                if (status === "online") {
+                    dot.className = "w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse";
+                } else if (status === "connecting") {
+                    dot.className = "w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping";
+                } else {
+                    dot.className = "w-2.5 h-2.5 bg-sky-300 rounded-full";
+                }
+            }
+        );
+
+        window.addEventListener("DOMContentLoaded", () => {
+            setupPlayerQRCode();
+            if (sessionStorage.getItem("om_btc_logged_in") === "true") {
+                showDashboard();
+            }
+        });
+
+        function verifyAdminPassword() {
+            const pass = document.getElementById("adminPasswordInput").value.trim();
+            if (pass === "admin123" || pass === "btc2026") {
+                sessionStorage.setItem("om_btc_logged_in", "true");
+                showDashboard();
+            } else {
+                showModal("Sai mật khẩu", "Mật khẩu BTC không đúng. Mật khẩu mặc định là admin123", "fa-lock", "text-red-500");
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById("adminLoginCard").classList.add("hidden");
+            document.getElementById("adminDashboardPanel").classList.remove("hidden");
+            renderAdminDashboard(syncEngine.getState());
+            setupPlayerQRCode();
+
+            const sheetInput = document.getElementById("googleSheetUrlInput");
+            if (sheetInput) {
+                sheetInput.value = (typeof getActiveGoogleSheetUrl === "function") ? getActiveGoogleSheetUrl() : "";
+            }
+        }
+
+        function saveGoogleSheetUrlFromAdmin() {
+            const input = document.getElementById("googleSheetUrlInput");
+            const val = input.value.trim();
+            localStorage.setItem("om_google_sheet_api_url", val);
+            showModal("Đã Lưu Link Google Sheet", "Hệ thống sẽ đồng bộ trực tiếp với Google Sheet này!", "fa-circle-check", "text-emerald-500");
+            setTimeout(() => window.location.reload(), 1200);
+        }
+
+        async function testGoogleSheetConnection() {
+            const input = document.getElementById("googleSheetUrlInput");
+            const val = input.value.trim();
+            if (!val) {
+                showModal("Chưa Nhập Link", "Vui lòng dán link Google Apps Script Web App trước khi kiểm tra.", "fa-triangle-exclamation", "text-amber-500");
+                return;
+            }
+            try {
+                showModal("Đang Kiểm Tra...", "Đang kết nối thử tới Google Sheet...", "fa-spinner fa-spin", "text-omBlue");
+                const res = await fetch(val);
+                const data = await res.json();
+                if (data && data.teams) {
+                    showModal("Kết Nối Thành Công!", `Đã lấy được dữ liệu của ${data.teams.length} đội từ Google Sheet! Trạng thái publish: ${data.isPublished}`, "fa-circle-check", "text-emerald-500");
+                } else {
+                    showModal("Cảnh Báo", "Đã kết nối nhưng cấu trúc dữ liệu chưa đúng chuẩn. Hãy kiểm tra lại code Apps Script.", "fa-triangle-exclamation", "text-amber-500");
+                }
+            } catch (err) {
+                showModal("Lỗi Kết Nối", "Không thể lấy dữ liệu từ URL này. Đảm bảo bạn đã cấp quyền 'Bất kỳ ai (Anyone)' khi Deploy Web App.", "fa-circle-xmark", "text-red-500");
+            }
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem("om_btc_logged_in");
+            document.getElementById("adminPasswordInput").value = "";
+            document.getElementById("adminLoginCard").classList.remove("hidden");
+            document.getElementById("adminDashboardPanel").classList.add("hidden");
+        }
+
+        function updatePublishBanner(state) {
+            const badge = document.getElementById("liveStateBadge");
+            if (!badge) return;
+            if (state.isPublished) {
+                badge.className = "px-4 py-2 rounded-2xl font-black text-xs uppercase flex items-center space-x-2 bg-emerald-100 text-emerald-800 border border-emerald-300";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span><span>ĐANG PUBLISH (ĐÃ MỞ KHÓA)</span>`;
+            } else {
+                badge.className = "px-4 py-2 rounded-2xl font-black text-xs uppercase flex items-center space-x-2 bg-amber-100 text-amber-800 border border-amber-300";
+                badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span><span>ĐANG KHÓA (CHỜ CÔNG BỐ)</span>`;
+            }
+        }
+
+        function renderAdminDashboard(state) {
+            updatePublishBanner(state);
+            const hideCheckbox = document.getElementById("hideRankOnCardCheckbox");
+            if (hideCheckbox) {
+                hideCheckbox.checked = !!state.hideRankOnCard;
+            }
+            populateAdminConfig(state);
+            populateAdminPreviewSelect(state);
+        }
+
+        const PRIZE_PRESETS = [
+            {
+                rank: 1,
+                title: "Giải Nhất: Quán Quân OM Trip 2026",
+                desc: "1.500.000 VNĐ"
+            },
+            {
+                rank: 2,
+                title: "Giải Nhì: Á Quân Bứt Phá",
+                desc: "1.000.000 VNĐ"
+            },
+            {
+                rank: 3,
+                title: "Giải Ba: Về Đích Ấn Tượng",
+                desc: "500.000 VNĐ"
+            },
+            {
+                rank: 4,
+                title: "Giải Khuyến Khích: Siêu Lầy Lội",
+                desc: "500.000 VNĐ"
+            },
+            {
+                rank: 4,
+                title: "Giải Phong Cách: Tỏa Sáng Ấn Tượng",
+                desc: "500.000 VNĐ"
+            },
+            {
+                rank: 4,
+                title: "Giải Đồng Đội: Tinh Thần Thép",
+                desc: "500.000 VNĐ"
+            },
+            {
+                rank: 4,
+                title: "Giải Sáng Tạo: Bứt Phá Giới Hạn",
+                desc: "500.000 VNĐ"
+            }
+        ];
+
+        function getRankFromPrizeTitle(title) {
+            if (!title) return 4;
+            const lower = title.toLowerCase();
+            if (lower.includes("nhất") || lower.includes("quán quân") || lower.includes("hạng 1") || lower.includes("hạng #1") || lower.includes("1st")) return 1;
+            if (lower.includes("nhì") || lower.includes("á quân") || lower.includes("hạng 2") || lower.includes("hạng #2") || lower.includes("2nd")) return 2;
+            if (lower.includes("ba") || lower.includes("hạng 3") || lower.includes("hạng #3") || lower.includes("3rd")) return 3;
+            if (lower.includes("khuyến khích") || lower.includes("hạng 4") || lower.includes("hạng #4") || lower.includes("4th")) return 4;
+            return 4;
+        }
+
+        function populateAdminConfig(state) {
+            const container = document.getElementById("teamsConfigContainer");
+            if (!container) return;
+            container.innerHTML = "";
+
+            // CỐ ĐỊNH THỨ TỰ 4 ĐỘI TỪ ĐỘI 1 ĐẾN ĐỘI 4 (ID luôn là team1, team2, team3, team4)
+            const fixedTeams = normalizeTeams(state.teams);
+
+            fixedTeams.forEach((team, index) => {
+                const teamNum = index + 1;
+                team.id = `team${teamNum}`;
+                
+                // Tự động tính rankOrder từ danh hiệu giải thưởng hiện tại
+                const rankOrder = getRankFromPrizeTitle(team.prize);
+                team.rankOrder = rankOrder;
+
+                const r1 = Number(team.round1) || 0;
+                const r2 = Number(team.round2) || 0;
+                const r3 = Number(team.round3) || 0;
+                const totalScore = r1 + r2 + r3;
+                const teamPassword = team.password || DEFAULT_PASSWORDS[index] || `111${teamNum}`;
+
+                let rankBadgeClass = "bg-omDarkBlue text-omYellow";
+                let rankIcon = "🎖️";
+                if (rankOrder === 1) { rankBadgeClass = "bg-amber-500 text-white"; rankIcon = "🥇"; }
+                else if (rankOrder === 2) { rankBadgeClass = "bg-slate-500 text-white"; rankIcon = "🥈"; }
+                else if (rankOrder === 3) { rankBadgeClass = "bg-amber-700 text-white"; rankIcon = "🥉"; }
+
+                const isUnlocked = team.unlocked !== false;
+
+                // Xác định danh hiệu hiện tại có trùng với preset nào không
+                const currentPrize = (team.prize || "").trim();
+                const matchedPreset = PRIZE_PRESETS.find(p => p.title.toLowerCase() === currentPrize.toLowerCase());
+                const isCustom = !matchedPreset && currentPrize !== "";
+
+                let optionsHTML = PRIZE_PRESETS.map(preset => {
+                    const isSelected = matchedPreset ? (matchedPreset.title === preset.title) : (rankOrder === preset.rank);
+                    let rankPrefix = "🎖️";
+                    if (preset.rank === 1) rankPrefix = "🥇 [Hạng 1]";
+                    else if (preset.rank === 2) rankPrefix = "🥈 [Hạng 2]";
+                    else if (preset.rank === 3) rankPrefix = "🥉 [Hạng 3]";
+                    else rankPrefix = "🎖️ [Hạng 4]";
+
+                    return `<option value="${preset.title}" ${isSelected ? 'selected' : ''}>${rankPrefix} ${preset.title}</option>`;
+                }).join("");
+
+                optionsHTML += `<option value="__CUSTOM__" ${isCustom ? 'selected' : ''}>✏️ Tùy chỉnh danh hiệu khác...</option>`;
+
+                const div = document.createElement("div");
+                div.className = "bg-slate-50 p-4 sm:p-5 rounded-2xl border-2 border-slate-200 hover:border-omLightBlue transition space-y-3.5";
+                div.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200 pb-2.5">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="${rankBadgeClass} px-3.5 py-1.5 rounded-xl text-xs font-black uppercase shadow-sm flex items-center space-x-1.5">
+                                <span>${rankIcon}</span>
+                                <span>Thứ Hạng #${rankOrder}</span>
+                            </span>
+                            <span id="admin_total_badge_${team.id}" class="bg-omBlue text-white px-3 py-1.5 rounded-xl text-xs font-black shadow-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-star text-omYellow"></i>
+                                <span>Tổng: ${totalScore} điểm</span>
+                            </span>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <!-- Mật khẩu riêng cho đội -->
+                            <div class="flex items-center space-x-1.5 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-xl" title="Mật khẩu để thành viên đội này nhập vào xem điểm & giải thưởng">
+                                <i class="fa-solid fa-key text-amber-600 text-xs"></i>
+                                <span class="text-[11px] font-bold text-amber-900">MK Đội ${teamNum}:</span>
+                                <input type="text" id="admin_password_${team.id}" value="${teamPassword}"
+                                    onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                    class="w-16 px-1.5 py-0.5 text-center rounded bg-white border border-amber-300 text-xs font-black text-omDarkBlue focus:outline-none focus:border-omBlue">
+                            </div>
+
+                            <!-- Nút bật/tắt mở khóa từng đội riêng lẻ -->
+                            <button type="button" onclick="toggleSingleTeamUnlock('${team.id}')" class="px-3 py-1 rounded-lg text-[11px] font-bold border transition ${isUnlocked ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-200 text-slate-600 border-slate-300'}" title="Cho phép mở hoặc khóa phong bì của riêng đội này">
+                                <i class="fa-solid ${isUnlocked ? 'fa-lock-open' : 'fa-lock'} mr-1"></i>${isUnlocked ? 'Cho phép mở' : 'Đang khóa riêng'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BẢNG CẬP NHẬT ĐIỂM 3 VÒNG CHƠI (REALTIME) -->
+                    <div class="bg-omBg/50 p-3.5 rounded-xl border border-omLightBlue/60 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-black text-omDarkBlue uppercase tracking-wider flex items-center space-x-1.5">
+                                <i class="fa-solid fa-gamepad text-omBlue"></i>
+                                <span>Điểm Số 3 Vòng Chơi (Cập nhật Realtime)</span>
+                            </span>
+                            <span id="admin_total_text_${team.id}" class="text-xs font-black text-omOrange">
+                                Tổng điểm: ${totalScore}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 mb-1">🎯 Vòng 1:</label>
+                                <input type="number" step="any" id="admin_r1_${team.id}" value="${r1}"
+                                    onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                    oninput="onRoundScoreInput('${team.id}')"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:border-omBlue focus:outline-none text-sm font-black text-omDarkBlue bg-white text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 mb-1">🔥 Vòng 2:</label>
+                                <input type="number" step="any" id="admin_r2_${team.id}" value="${r2}"
+                                    onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                    oninput="onRoundScoreInput('${team.id}')"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:border-omBlue focus:outline-none text-sm font-black text-omDarkBlue bg-white text-center">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-600 mb-1">🚀 Vòng 3:</label>
+                                <input type="number" step="any" id="admin_r3_${team.id}" value="${r3}"
+                                    onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                    oninput="onRoundScoreInput('${team.id}')"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 focus:border-omBlue focus:outline-none text-sm font-black text-omDarkBlue bg-white text-center">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 mb-1">Tên Đội ${teamNum}:</label>
+                            <input type="text" data-team-id="${team.id}" id="admin_name_${team.id}" value="${team.name}"
+                                onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-omBlue focus:outline-none text-sm font-black text-omDarkBlue bg-white">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-[11px] font-bold text-slate-600">Chọn Giải Thưởng (Tự Động Đặt Thứ Hạng):</label>
+                                <button type="button" onclick="toggleCustomPrizeInput('${team.id}')" class="text-[10px] text-omBlue font-bold hover:underline">
+                                    <i class="fa-solid fa-pen-to-square"></i> Tự gõ
+                                </button>
+                            </div>
+                            <!-- Dropdown chọn danh hiệu giải (Tự động gán thứ hạng chuẩn) -->
+                            <select id="admin_prize_select_${team.id}" onchange="onPrizeSelectChange('${team.id}')"
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-omBlue focus:outline-none text-sm font-bold text-amber-700 bg-white">
+                                ${optionsHTML}
+                            </select>
+                            <!-- Ô nhập tay xuất hiện khi chọn Tùy chỉnh -->
+                            <input type="text" id="admin_prize_${team.id}" value="${team.prize}"
+                                onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                                placeholder="Gõ danh hiệu giải thưởng khác..."
+                                class="${isCustom ? '' : 'hidden '}mt-1.5 w-full px-3 py-1.5 rounded-lg border border-amber-300 focus:border-omBlue focus:outline-none text-xs font-bold text-amber-800 bg-amber-50">
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[11px] font-bold text-slate-600">Tiền Thưởng Giải:</label>
+                            <span class="text-[10px] text-slate-400 italic">Tự động gợi ý theo danh hiệu đã chọn</span>
+                        </div>
+                        <input type="text" id="admin_desc_${team.id}" value="${team.desc}"
+                            onfocus="isEditingForm=true" onblur="isEditingForm=false"
+                            placeholder="Ví dụ: 1.500.000 VNĐ"
+                            class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:border-omBlue focus:outline-none text-xs font-bold text-slate-800 bg-white">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function onRoundScoreInput(teamId) {
+            const r1 = Number(document.getElementById(`admin_r1_${teamId}`)?.value) || 0;
+            const r2 = Number(document.getElementById(`admin_r2_${teamId}`)?.value) || 0;
+            const r3 = Number(document.getElementById(`admin_r3_${teamId}`)?.value) || 0;
+            const total = r1 + r2 + r3;
+
+            const badgeEl = document.getElementById(`admin_total_badge_${teamId}`);
+            const textEl = document.getElementById(`admin_total_text_${teamId}`);
+            if (badgeEl) badgeEl.innerHTML = `<i class="fa-solid fa-star text-omYellow"></i><span>Tổng: ${total} điểm</span>`;
+            if (textEl) textEl.textContent = `Tổng điểm: ${total}`;
+        }
+
+        function autoAssignPrizesByScore() {
+            const state = collectFormIntoState();
+            // Tính tổng điểm của từng đội
+            const totals = state.teams.map(t => (Number(t.round1) || 0) + (Number(t.round2) || 0) + (Number(t.round3) || 0));
+            // Sắp xếp các mức điểm phân biệt từ cao xuống thấp (hỗ trợ đồng hạng nếu bằng điểm)
+            const uniqueScoresDesc = [...new Set(totals)].sort((a, b) => b - a);
+
+            state.teams.forEach((team, idx) => {
+                const score = totals[idx];
+                const rankIndex = Math.min(uniqueScoresDesc.indexOf(score), 3); // 0 -> Hạng 1, 1 -> Hạng 2, 2 -> Hạng 3, 3 -> Hạng 4
+                const preset = PRIZE_PRESETS[rankIndex] || PRIZE_PRESETS[3];
+                team.rankOrder = preset.rank;
+                team.prize = preset.title;
+                team.desc = preset.desc;
+            });
+
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+            populateAdminConfig(state);
+            populateAdminPreviewSelect(state);
+            showModal("Đã Xếp Giải Theo Điểm!", "Hệ thống đã tự động tính tổng điểm 3 vòng và gán Giải Nhất, Nhì, Ba, Khuyến Khích tương ứng cho 4 đội!", "fa-ranking-star", "text-omBlue");
+        }
+
+        function onPrizeSelectChange(teamId) {
+            const select = document.getElementById(`admin_prize_select_${teamId}`);
+            const input = document.getElementById(`admin_prize_${teamId}`);
+            const descInput = document.getElementById(`admin_desc_${teamId}`);
+            if (!select || !input) return;
+
+            if (select.value === "__CUSTOM__") {
+                input.classList.remove("hidden");
+                input.focus();
+                return;
+            }
+
+            input.classList.add("hidden");
+            const newPrizeTitle = select.value;
+            input.value = newPrizeTitle;
+
+            // Tự động điền mô tả phần thưởng tương ứng cho riêng đội này
+            const matchedPreset = PRIZE_PRESETS.find(p => p.title === newPrizeTitle);
+            if (matchedPreset && descInput) {
+                descInput.value = matchedPreset.desc;
+            }
+
+            // Thu thập dữ liệu 4 đội độc lập (hỗ trợ 2, 3 hoặc 4 đội đồng hạng mà không làm mất tên đội)
+            const state = collectFormIntoState();
+
+            // Đồng bộ ngay lập tức và làm mới giao diện
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+            populateAdminConfig(state);
+            populateAdminPreviewSelect(state);
+        }
+
+        function toggleCustomPrizeInput(teamId) {
+            const select = document.getElementById(`admin_prize_select_${teamId}`);
+            const input = document.getElementById(`admin_prize_${teamId}`);
+            if (!select || !input) return;
+
+            if (input.classList.contains("hidden")) {
+                select.value = "__CUSTOM__";
+                input.classList.remove("hidden");
+                input.focus();
+            } else {
+                const matched = PRIZE_PRESETS.find(p => p.title === input.value.trim());
+                if (matched) {
+                    select.value = matched.title;
+                }
+                input.classList.add("hidden");
+            }
+        }
+
+        function collectFormIntoState() {
+            const state = syncEngine.getState();
+            const hideCheckbox = document.getElementById("hideRankOnCardCheckbox");
+            if (hideCheckbox) {
+                state.hideRankOnCard = hideCheckbox.checked;
+            }
+
+            state.teams = normalizeTeams(state.teams);
+
+            state.teams.forEach((team, idx) => {
+                const teamId = `team${idx + 1}`;
+                team.id = teamId;
+
+                const nameEl = document.getElementById(`admin_name_${teamId}`);
+                const prizeEl = document.getElementById(`admin_prize_${teamId}`);
+                const prizeSelect = document.getElementById(`admin_prize_select_${teamId}`);
+                const descEl = document.getElementById(`admin_desc_${teamId}`);
+                const r1El = document.getElementById(`admin_r1_${teamId}`);
+                const r2El = document.getElementById(`admin_r2_${teamId}`);
+                const r3El = document.getElementById(`admin_r3_${teamId}`);
+                const pwEl = document.getElementById(`admin_password_${teamId}`);
+
+                if (nameEl) team.name = nameEl.value.trim();
+                if (prizeSelect && prizeSelect.value !== "__CUSTOM__") {
+                    team.prize = prizeSelect.value.trim();
+                } else if (prizeEl) {
+                    team.prize = prizeEl.value.trim();
+                }
+                if (descEl) team.desc = descEl.value.trim();
+
+                if (r1El) team.round1 = Number(r1El.value) || 0;
+                if (r2El) team.round2 = Number(r2El.value) || 0;
+                if (r3El) team.round3 = Number(r3El.value) || 0;
+                if (pwEl && pwEl.value.trim() !== "") {
+                    team.password = pwEl.value.trim();
+                }
+
+                // Tự động gán thứ hạng chuẩn 1..4 theo danh hiệu giải thưởng (cho phép nhiều đội đồng hạng)
+                team.rankOrder = getRankFromPrizeTitle(team.prize);
+            });
+
+            return state;
+        }
+
+        function moveTeamRank(sortedIndex, direction) {
+            const state = collectFormIntoState();
+            const sorted = [...state.teams].sort((a, b) => (a.rankOrder || 99) - (b.rankOrder || 99));
+            const targetIndex = sortedIndex + direction;
+            if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+            // Hoán đổi đội thắng nhưng giữ nguyên khung giải thưởng nếu muốn hoặc hoán đổi vị trí thứ hạng
+            const temp = sorted[sortedIndex];
+            sorted[sortedIndex] = sorted[targetIndex];
+            sorted[targetIndex] = temp;
+
+            sorted.forEach((t, idx) => {
+                t.rankOrder = idx + 1;
+            });
+
+            state.teams = sorted;
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+        }
+
+        function toggleSingleTeamUnlock(teamId) {
+            const state = collectFormIntoState();
+            const team = state.teams.find(t => t.id === teamId);
+            if (team) {
+                team.unlocked = (team.unlocked === false) ? true : false;
+            }
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+        }
+
+        function saveTeamConfigsRealtime(showPopup = true) {
+            const state = collectFormIntoState();
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+            if (showPopup) {
+                showModal("Đã Đồng Bộ Realtime!", "Cấu hình thứ hạng và giải thưởng của 4 đội đã được lưu và cập nhật tức thì lên hệ thống!", "fa-cloud-arrow-up", "text-emerald-600");
+            }
+        }
+
+        function publishResults() {
+            const state = collectFormIntoState();
+            state.isPublished = true;
+            state.teams.forEach(t => t.unlocked = true);
+            state.celebrationPulse = Date.now();
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            showModal("Đã PUBLISH Kết Quả!", "Tất cả điện thoại của 4 đội chơi đã được mở khóa phong bì và bắn pháo hoa chúc mừng tức thì!", "fa-bullhorn", "text-omOrange");
+        }
+
+        function unpublishResults() {
+            const state = collectFormIntoState();
+            state.isPublished = false;
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(state);
+            showModal("Đã Khóa Kết Quả", "Trang người chơi đã chuyển về trạng thái phòng chờ hồi hộp chờ hiệu lệnh từ BTC.", "fa-lock", "text-amber-600");
+        }
+
+        function triggerRemoteConfetti() {
+            const state = collectFormIntoState();
+            state.celebrationPulse = Date.now();
+            syncEngine.saveAndBroadcast(state);
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        }
+
+        function resetToDefaultState() {
+            if (!confirm("Bạn có chắc muốn khôi phục dữ liệu 4 đội về mặc định ban đầu?")) return;
+            const freshState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+            isEditingForm = false;
+            syncEngine.saveAndBroadcast(freshState);
+        }
+
+        function populateAdminPreviewSelect(state) {
+            const select = document.getElementById("adminPreviewTeamSelect");
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = "";
+            const fixed = normalizeTeams(state.teams);
+            fixed.forEach((team) => {
+                const opt = document.createElement("option");
+                opt.value = team.id;
+                const rank = team.rankOrder || getRankFromPrizeTitle(team.prize);
+                opt.textContent = `${team.name} [Hạng #${rank}]`;
+                select.appendChild(opt);
+            });
+            if (current) select.value = current;
+        }
+
+        function openAdminPreviewModal() {
+            const state = collectFormIntoState();
+            syncEngine.saveAndBroadcast(state);
+
+            const teamId = document.getElementById("adminPreviewTeamSelect").value;
+            const team = state.teams.find(t => t.id === teamId);
+            if (!team) return;
+
+            document.getElementById("previewTeamName").textContent = team.name;
+            document.getElementById("previewRankBadge").textContent = `🏆 THỨ HẠNG #${team.rankOrder || 1}`;
+            document.getElementById("previewPrizeTitle").textContent = team.prize;
+            document.getElementById("previewPrizeDesc").textContent = team.desc;
+            document.getElementById("previewModal").classList.remove("hidden");
+        }
+
+        function closePreviewModal() {
+            document.getElementById("previewModal").classList.add("hidden");
+        }
+
+        function getPlayerPageUrl() {
+            const currentUrl = new URL(window.location.href);
+            // Đổi admin.html thành index.html
+            currentUrl.pathname = currentUrl.pathname.replace(/admin(\.html)?$/i, "index.html");
+            currentUrl.searchParams.set("room", syncEngine.roomId);
+            return currentUrl.toString();
+        }
+
+        function setupPlayerQRCode() {
+            const playerUrl = getPlayerPageUrl();
+            const inputEl = document.getElementById("playerUrlInput");
+            const linkEl = document.getElementById("openPlayerPageLink");
+            if (inputEl) inputEl.value = playerUrl;
+            if (linkEl) linkEl.href = playerUrl;
+
+            const qrcodeContainer = document.getElementById("qrcode");
+            if (!qrcodeContainer) return;
+            qrcodeContainer.innerHTML = "";
+            try {
+                new QRCode(qrcodeContainer, {
+                    text: playerUrl,
+                    width: 150,
+                    height: 150,
+                    colorDark: "#03045E",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (e) {
+                console.error("QR Code error:", e);
+            }
+        }
+
+        function copyPlayerUrl() {
+            const input = document.getElementById("playerUrlInput");
+            navigator.clipboard.writeText(input.value).then(() => {
+                showModal("Đã sao chép", "Đã sao chép đường dẫn Trang Người Chơi vào bộ nhớ tạm!", "fa-copy", "text-omBlue");
+            }).catch(() => {
+                input.select();
+                document.execCommand("copy");
+                showModal("Đã sao chép", "Đã sao chép đường dẫn Trang Người Chơi!", "fa-copy", "text-omBlue");
+            });
+        }
+
+        function showModal(title, message, iconClass, iconColorClass) {
+            document.getElementById("modalTitle").textContent = title;
+            document.getElementById("modalMessage").textContent = message;
+            const iconEl = document.getElementById("modalIcon");
+            iconEl.className = `w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl shadow ${iconColorClass} bg-omBg`;
+            iconEl.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+            document.getElementById("notificationModal").classList.remove("hidden");
+        }
+
+        function closeModal() {
+            document.getElementById("notificationModal").classList.add("hidden");
+        }
+    </script>
+</body>
+
+</html>

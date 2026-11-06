@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OM TRIP 2026 - Bảng Điểm 3 Vòng & Lễ Trao Giải</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- MQTT.js for Zero-Config Cloud Realtime Sync -->
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        omBlue: '#0077B6',
+                        omDarkBlue: '#03045E',
+                        omLightBlue: '#00B4D8',
+                        omCyan: '#90E0EF',
+                        omYellow: '#FFB703',
+                        omOrange: '#FB8500',
+                        omBg: '#CAF0F8'
+                    },
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #0077B6 0%, #00B4D8 50%, #90E0EF 100%);
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #CAF0F8;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #0077B6;
+            border-radius: 4px;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(255, 183, 3, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 35px rgba(255, 183, 3, 0.9);
+            }
+        }
+
+        .glow-gold {
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-6px);
+            }
+
+            75% {
+                transform: translateX(6px);
+            }
+        }
+
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="text-slate-800 antialiased flex flex-col min-h-screen">
+
+    <!-- Top Banner Header (Dành riêng cho Người Chơi) -->
+    <header
+        class="bg-omDarkBlue/90 backdrop-blur-md text-white shadow-lg sticky top-0 z-40 border-b border-omLightBlue/30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center space-x-3">
+                <div
+                    class="bg-omYellow text-omDarkBlue p-2.5 rounded-xl font-black text-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-umbrella-beach"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black tracking-wider text-omYellow uppercase">OM TRIP 2026</h1>
+                    <p class="text-xs text-omCyan font-medium">Bảng Điểm 3 Vòng & Lễ Trao Giải</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <!-- Trạng thái đồng bộ Realtime -->
+
+
+                <!-- Nút xem Bảng Tổng Sắp (hiển thị khi BTC đã Publish) -->
+                <button id="leaderboardToggleBtn" onclick="toggleLeaderboardView()"
+                    class="hidden px-3.5 py-2 bg-omYellow text-omDarkBlue rounded-xl font-extrabold text-xs shadow hover:bg-yellow-400 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-ranking-star"></i>
+                    <span id="leaderboardBtnLabel">Bảng Xếp Hạng</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 my-auto">
+
+        <div id="participantView" class="space-y-6">
+
+            <!-- 1. MÀN HÌNH CHỌN ĐỘI CHƠI -->
+            <div id="teamSelectionCardWrapper"
+                class="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl border-4 border-omYellow text-center relative overflow-hidden">
+                <div
+                    class="absolute -right-10 -top-10 w-40 h-40 bg-omYellow/20 rounded-full blur-2xl pointer-events-none">
+                </div>
+                <div
+                    class="absolute -left-10 -bottom-10 w-40 h-40 bg-omBlue/10 rounded-full blur-2xl pointer-events-none">
+                </div>
+
+                <div
+                    class="inline-flex items-center space-x-2 bg-omYellow/20 text-omOrange px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-3 border border-omYellow/40">
+                    <span>🎉 Theo Dõi Điểm Số 3 Vòng & Công Bố Giải Thưởng</span>
+                </div>
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-omDarkBlue mb-2">
+                    Chọn Đội Chơi Của Bạn
+                </h2>
+                <p id="publishStatusSubtitle" class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto mb-6">
+                    Chạm vào đội của bạn và nhập mật khẩu đội để theo dõi điểm số Realtime qua 3 vòng chơi cũng như mở
+                    phong bì giải thưởng!
+                </p>
+
+                <!-- Team Selection Cards Grid -->
+                <div id="teamSelectionGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- 2. MÀN HÌNH BẢNG ĐIỂM 3 VÒNG & MỞ PHONG BÌ CỦA ĐỘI ĐÃ CHỌN -->
+            <div id="revealStageContainer" class="hidden">
+                <div
+                    class="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-8 shadow-2xl border-4 border-omBlue text-center relative space-y-6">
+
+                    <div class="flex flex-wrap justify-between items-center gap-2">
+                        <button onclick="resetRevealView()"
+                            class="inline-flex items-center space-x-1.5 text-xs font-bold text-omBlue bg-omBg px-3.5 py-2 rounded-xl hover:bg-omLightBlue hover:text-white transition shadow-sm">
+                            <i class="fa-solid fa-arrow-left"></i>
+                            <span>Quay lại chọn đội</span>
+                        </button>
+
+                        <span id="displayRankingBadge"
+                            class="bg-omYellow text-omDarkBlue px-4 py-1 rounded-full text-xs font-black uppercase shadow-sm">
+                            Khu Vực Đội Chơi
+                        </span>
+                    </div>
+
+                    <div>
+                        <h3 id="displayTeamName" class="text-2xl sm:text-4xl font-black text-omDarkBlue"></h3>
+                    </div>
+
+                    <!-- PHẦN A: BẢNG ĐIỂM REALTIME QUA 3 VÒNG CHƠI CỦA ĐỘI -->
+                    <div
+                        class="max-w-xl mx-auto bg-gradient-to-br from-slate-50 to-omBg/60 rounded-3xl p-5 sm:p-6 border-2 border-omLightBlue shadow-lg space-y-4">
+                        <div
+                            class="flex flex-wrap justify-between items-center gap-2 border-b border-omLightBlue/40 pb-3">
+                            <div class="flex items-center space-x-2">
+                                <div
+                                    class="w-8 h-8 rounded-xl bg-omBlue text-omYellow flex items-center justify-center text-sm shadow">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </div>
+                                <h4 class="text-sm sm:text-base font-black text-omDarkBlue uppercase tracking-wide">
+                                    Bảng Điểm Đội Qua 3 Vòng Chơi
+                                </h4>
+                            </div>
+                            <span
+                                class="inline-flex items-center space-x-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                <span>Realtime Live</span>
+                            </span>
+                        </div>
+
+                        <!-- Điểm 3 vòng -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div
+                                class="bg-white rounded-2xl p-3.5 border-2 border-omLightBlue/40 shadow-sm flex flex-col items-center justify-center">
+                                <span class="text-[11px] font-extrabold text-slate-500 uppercase">🎯 Vòng 1</span>
+                                <span id="teamRound1Score"
+                                    class="text-2xl sm:text-3xl font-black text-omBlue mt-1">0</span>
+                                <span class="text-[10px] font-semibold text-slate-400">điểm</span>
+                            </div>
+                            <div
+                                class="bg-white rounded-2xl p-3.5 border-2 border-omLightBlue/40 shadow-sm flex flex-col items-center justify-center">
+                                <span class="text-[11px] font-extrabold text-slate-500 uppercase">🔥 Vòng 2</span>
+                                <span id="teamRound2Score"
+                                    class="text-2xl sm:text-3xl font-black text-omBlue mt-1">0</span>
+                                <span class="text-[10px] font-semibold text-slate-400">điểm</span>
+                            </div>
+                            <div
+                                class="bg-white rounded-2xl p-3.5 border-2 border-omLightBlue/40 shadow-sm flex flex-col items-center justify-center">
+                                <span class="text-[11px] font-extrabold text-slate-500 uppercase">🚀 Vòng 3</span>
+                                <span id="teamRound3Score"
+                                    class="text-2xl sm:text-3xl font-black text-omBlue mt-1">0</span>
+                                <span class="text-[10px] font-semibold text-slate-400">điểm</span>
+                            </div>
+                        </div>
+
+                        <!-- Tổng điểm đạt được -->
+                        <div
+                            class="bg-gradient-to-r from-omDarkBlue to-omBlue text-white rounded-2xl p-4 shadow-md border-2 border-omYellow flex items-center justify-between px-6">
+                            <div class="text-left">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-omCyan">Tổng Điểm Hiện Đạt
+                                    Được</p>
+                                <p class="text-xs text-white/80">Tự động cộng dồn sau mỗi vòng</p>
+                            </div>
+                            <div class="text-right">
+                                <span id="teamTotalScore"
+                                    class="text-3xl sm:text-4xl font-black text-omYellow drop-shadow">0</span>
+                                <span class="text-xs font-extrabold text-omCyan block">ĐIỂM</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PHẦN B: PHONG BÌ KẾT QUẢ & GIẢI THƯỞNG CHUNG CUỘC -->
+                    <div class="max-w-md mx-auto">
+                        <div id="envelopeCard"
+                            class="bg-gradient-to-br from-omDarkBlue to-omBlue rounded-3xl p-8 shadow-2xl text-white border-4 border-omYellow relative min-h-[300px] flex flex-col items-center justify-center transition-all duration-500 glow-gold">
+
+                            <!-- Trạng thái 1: Phong bì đang đóng (Sẵn sàng mở) -->
+                            <div id="envelopeClosedState" class="space-y-4">
+                                <div
+                                    class="w-20 h-20 bg-omYellow rounded-full mx-auto flex items-center justify-center shadow-lg animate-bounce">
+                                    <i class="fa-solid fa-award text-omDarkBlue text-3xl"></i>
+                                </div>
+                                <h4 class="text-xl font-black text-omYellow tracking-wider uppercase">Phong Bì Giải
+                                    Thưởng Chung Cuộc</h4>
+                                <p class="text-xs sm:text-sm text-omCyan leading-relaxed">
+                                    BTC đã công bố kết quả! Chạm vào nút bên dưới để mở phong bì và xem giải thưởng đội
+                                    bạn đạt được!
+                                </p>
+                                <button onclick="openEnvelopeWithCountdown()"
+                                    class="mt-2 px-7 py-3.5 bg-omYellow hover:bg-amber-400 text-omDarkBlue font-black rounded-xl text-sm shadow-xl transition transform hover:scale-105 active:scale-95">
+                                    MỞ PHONG BÌ NGAY 🔓
+                                </button>
+                            </div>
+
+                            <!-- Trạng thái 2: Đếm ngược hồi hộp 3..2..1 -->
+                            <div id="envelopeCountdownState" class="hidden space-y-3 text-center">
+                                <p class="text-xs font-bold uppercase tracking-widest text-omCyan">Đang mở niêm phong
+                                    kết quả...</p>
+                                <div id="countdownNumber"
+                                    class="text-7xl font-black text-omYellow drop-shadow-lg animate-ping">3</div>
+                            </div>
+
+                            <!-- Trạng thái 3: Đã mở phong bì chúc mừng -->
+                            <div id="envelopeOpenedState" class="hidden text-center space-y-4 w-full">
+                                <div id="openedRankBadge"
+                                    class="inline-block bg-omYellow text-omDarkBlue px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider shadow">
+                                    🏆 KẾT QUẢ CHÍNH THỨC
+                                </div>
+                                <div class="py-1">
+                                    <div id="prizeIconDisplay" class="text-4xl mb-2">🥇</div>
+                                    <h3 id="prizeTitleDisplay"
+                                        class="text-2xl sm:text-3xl font-black text-omYellow drop-shadow leading-tight">
+                                    </h3>
+                                </div>
+                                <div class="bg-white/15 p-5 rounded-2xl border border-white/25 backdrop-blur-sm">
+                                    <p class="text-[11px] uppercase tracking-wider text-omCyan font-bold mb-1">Tiền
+                                        Thưởng Giải</p>
+                                    <p id="prizeDescDisplay"
+                                        class="text-2xl sm:text-3xl text-omYellow font-black tracking-wide leading-relaxed">
+                                    </p>
+                                </div>
+                                <p class="text-xs text-omCyan italic pt-2">
+                                    🎉 Chúc mừng đội chơi đã hoàn thành xuất sắc chặng đường OM Trip 2026!
+                                </p>
+                                <div class="pt-2 flex flex-wrap justify-center gap-2">
+                                    <button onclick="fireCelebrationConfetti()"
+                                        class="px-4 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-bold text-omYellow border border-omYellow/40 transition">
+                                        🎆 Bắn Pháo Hoa Chúc Mừng
+                                    </button>
+                                    <button onclick="showLeaderboardView()"
+                                        class="px-4 py-2 bg-omYellow text-omDarkBlue rounded-xl text-xs font-black shadow hover:bg-amber-400 transition">
+                                        🏆 Xem Bảng Tổng Sắp 4 Đội
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- Trạng thái chờ BTC công bố giải thưởng chung cuộc -->
+                    <div id="notPublishedWarning"
+                        class="hidden p-6 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-800 max-w-xl mx-auto space-y-2">
+                        <div
+                            class="w-12 h-12 bg-amber-100 rounded-full mx-auto flex items-center justify-center text-amber-600 text-xl animate-pulse">
+                            <i class="fa-solid fa-hourglass-half"></i>
+                        </div>
+                        <h4 class="font-black text-base sm:text-lg text-amber-900">Giải Thưởng Đang Chờ Công Bố!</h4>
+                        <p class="text-xs sm:text-sm leading-relaxed">
+                            Bảng điểm 3 vòng ở trên được cập nhật trực tiếp sau mỗi thử thách. Khi kết thúc 3 vòng chơi, BTC công bố thì giải thưởng của đội bạn sẽ công bố ngay tại đây!
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 3. BẢNG VÀNG TỔNG SẮP 4 ĐỘI (LEADERBOARD VIEW) -->
+            <div id="leaderboardStageContainer" class="hidden">
+                <div
+                    class="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl border-4 border-omYellow relative">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-6 border-b border-slate-200 pb-4">
+                        <div class="flex items-center space-x-3">
+                            <div
+                                class="w-11 h-11 rounded-2xl bg-omYellow text-omDarkBlue flex items-center justify-center text-xl font-black shadow">
+                                <i class="fa-solid fa-trophy"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl sm:text-2xl font-black text-omDarkBlue">BẢNG VÀNG VINH DANH OM TRIP
+                                    2026</h3>
+                                <p class="text-xs text-slate-500 font-semibold">Thứ hạng & tổng điểm chung cuộc của 4
+                                    đội chơi</p>
+                            </div>
+                        </div>
+                        <button onclick="resetRevealView()"
+                            class="px-4 py-2 bg-omBlue hover:bg-omDarkBlue text-white rounded-xl text-xs font-bold shadow transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-grip"></i>
+                            <span>Quay lại Chọn Đội</span>
+                        </button>
+                    </div>
+
+                    <div id="leaderboardList" class="space-y-4">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- POPUP NHẬP MẬT KHẨU ĐỘI CHƠI -->
+    <div id="teamPasswordModal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div id="teamPasswordModalCard"
+            class="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl text-center space-y-4 border-4 border-omYellow relative">
+            <button onclick="closeTeamPasswordModal()"
+                class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div
+                class="w-16 h-16 bg-omDarkBlue text-omYellow rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg">
+                <i class="fa-solid fa-user-lock"></i>
+            </div>
+
+            <div>
+                <span class="bg-omBg text-omBlue px-3 py-0.5 rounded-full text-[10px] font-black uppercase">Bảo Mật Đội
+                    Chơi</span>
+                <h3 id="passwordModalTeamName" class="text-xl font-black text-omDarkBlue mt-1">Tên Đội</h3>
+                <p class="text-xs text-slate-500 mt-1">Vui lòng nhập mật khẩu của đội bạn để xem Bảng Điểm 3 Vòng & Giải
+                    Thưởng.</p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); verifyTeamPassword();" class="space-y-3 pt-1">
+                <input type="password" id="teamPasswordInput" placeholder="Nhập mật khẩu đội..." autocomplete="off"
+                    class="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-omBlue focus:outline-none text-center text-base font-black text-omDarkBlue tracking-widest">
+                <p id="teamPasswordError"
+                    class="hidden text-xs font-bold text-red-600 bg-red-50 py-1.5 px-3 rounded-lg border border-red-200">
+                    <i class="fa-solid fa-circle-exclamation mr-1"></i>Mật khẩu chưa đúng! Hãy hỏi Đội Trưởng hoặc BTC.
+                </p>
+                <button type="submit"
+                    class="w-full py-3 bg-omDarkBlue hover:bg-omBlue text-omYellow font-black rounded-xl text-sm shadow-lg transition">
+                    XÁC NHẬN VÀO XEM ĐIỂM 🔓
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 text-white/80 text-xs font-medium space-y-1">
+        <p>OM TRIP 2026 Activities Handbook & Team Building Event</p>
+        <p class="text-omYellow font-bold">Have a wonderful holiday and enjoy every moment!</p>
+    </footer>
+
+    <!-- Shared Sync Logic -->
+    <script src="sync.js"></script>
+
+    <!-- Participant Application Logic -->
+    <script>
+        let pendingPasswordTeamId = null;
+        let activeSelectedTeamId = null;
+        let isEnvelopeOpened = false;
+        let lastCelebrationPulse = 0;
+
+        const syncEngine = new OMRealtimeSync(
+            (newState) => {
+                handleRealtimeStateUpdate(newState);
+            },
+            (status, label) => {
+                const dot = document.getElementById("syncDot");
+                const text = document.getElementById("syncText");
+                if (!dot || !text) return;
+                text.textContent = label;
+                if (status === "online") {
+                    dot.className = "w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse";
+                } else if (status === "connecting") {
+                    dot.className = "w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping";
+                } else {
+                    dot.className = "w-2.5 h-2.5 bg-sky-300 rounded-full";
+                }
+            }
+        );
+
+        window.addEventListener("DOMContentLoaded", () => {
+            const initialState = syncEngine.getState();
+            lastCelebrationPulse = initialState.celebrationPulse || 0;
+            renderParticipantUI(initialState);
+        });
+
+        function handleRealtimeStateUpdate(state) {
+            if (state.celebrationPulse && state.celebrationPulse > lastCelebrationPulse) {
+                lastCelebrationPulse = state.celebrationPulse;
+                fireCelebrationConfetti();
+            }
+            renderParticipantUI(state);
+        }
+
+        function getRankMeta(rankOrder) {
+            switch (Number(rankOrder)) {
+                case 1:
+                    return { badgeBg: "bg-amber-500 text-white", icon: "🥇", label: "Hạng #1 - Quán Quân", border: "border-amber-400 bg-amber-50/70" };
+                case 2:
+                    return { badgeBg: "bg-slate-500 text-white", icon: "🥈", label: "Hạng #2 - Á Quân", border: "border-slate-300 bg-slate-50/70" };
+                case 3:
+                    return { badgeBg: "bg-amber-700 text-white", icon: "🥉", label: "Hạng #3 - Giải Ba", border: "border-amber-700/40 bg-orange-50/50" };
+                default:
+                    return { badgeBg: "bg-omDarkBlue text-omYellow", icon: "🎖️", label: "Hạng #4 - Khuyến Khích", border: "border-omLightBlue bg-omBg/40" };
+            }
+        }
+
+        function renderParticipantUI(state) {
+            const lbBtn = document.getElementById("leaderboardToggleBtn");
+            if (state.isPublished) {
+                lbBtn.classList.remove("hidden");
+            } else {
+                lbBtn.classList.add("hidden");
+            }
+
+            populateTeamSelectionCards(state);
+            populateLeaderboard(state);
+
+            // Nếu người chơi đang ở trong màn hình đội của mình, cập nhật điểm 3 vòng & trạng thái phong bì tức thì!
+            if (activeSelectedTeamId) {
+                updateActiveRevealStage(state);
+            }
+        }
+
+        function getRankFromPrizeTitle(title) {
+            if (!title) return 4;
+            const lower = title.toLowerCase();
+            if (lower.includes("nhất") || lower.includes("quán quân") || lower.includes("hạng 1") || lower.includes("hạng #1") || lower.includes("1st")) return 1;
+            if (lower.includes("nhì") || lower.includes("á quân") || lower.includes("hạng 2") || lower.includes("hạng #2") || lower.includes("2nd")) return 2;
+            if (lower.includes("ba") || lower.includes("hạng 3") || lower.includes("hạng #3") || lower.includes("3rd")) return 3;
+            if (lower.includes("khuyến khích") || lower.includes("hạng 4") || lower.includes("hạng #4") || lower.includes("4th")) return 4;
+            return 4;
+        }
+
+        function populateTeamSelectionCards(state) {
+            const grid = document.getElementById("teamSelectionGrid");
+            if (!grid) return;
+            grid.innerHTML = "";
+
+            // LUÔN CỐ ĐỊNH THỨ TỰ 4 ĐỘI TỪ ĐỘI 1 ĐẾN ĐỘI 4
+            const displayTeams = normalizeTeams(state.teams);
+
+            displayTeams.forEach((team) => {
+                const isTeamReady = state.isPublished && (team.unlocked !== false);
+                const rankOrder = team.rankOrder || getRankFromPrizeTitle(team.prize);
+                const rankMeta = getRankMeta(rankOrder);
+
+                const card = document.createElement("div");
+                card.className = "bg-omBg/90 hover:bg-white border-2 border-omLightBlue hover:border-omBlue p-5 rounded-2xl shadow transition transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between space-y-3";
+                card.onclick = () => requestTeamPasswordAndOpen(team.id);
+
+                const topBadgeHTML = (!state.hideRankOnCard && isTeamReady)
+                    ? `<span class="${rankMeta.badgeBg} px-3 py-1 rounded-full text-xs font-black uppercase shadow-sm">${rankMeta.icon} Thứ hạng #${rankOrder}</span>`
+                    : `<span class="bg-omDarkBlue text-omYellow px-3 py-1 rounded-full text-xs font-black uppercase shadow-sm">GIẢI THƯỞNG</span>`;
+
+                const subtitleHTML = (!state.hideRankOnCard && isTeamReady)
+                    ? `<p class="text-xs text-slate-600 mt-1 font-semibold">${team.prize}</p>`
+                    : `<p class="text-xs text-slate-500 mt-1 font-medium">${isTeamReady ? "✨ Đã công bố giải - Nhập mật khẩu đội để xem!" : "🎯 Chạm để nhập mật khẩu & xem điểm 3 vòng Realtime"}</p>`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        ${topBadgeHTML}
+                        <i class="fa-solid ${isTeamReady ? 'fa-envelope-open-text text-omOrange animate-bounce' : 'fa-lock text-omBlue'} text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-xl font-black text-omDarkBlue">${team.name}</h4>
+                        ${subtitleHTML}
+                    </div>
+                    <div class="pt-2 flex items-center justify-between text-xs font-bold text-omBlue">
+                        <span><i class="fa-solid fa-key mr-1"></i>Xem điểm & Giải thưởng đội</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Mở Popup yêu cầu nhập mật khẩu của đội
+        function requestTeamPasswordAndOpen(teamId) {
+            const state = syncEngine.getState();
+            const teams = normalizeTeams(state.teams);
+            const team = teams.find(t => t.id === teamId);
+            if (!team) return;
+
+            pendingPasswordTeamId = teamId;
+            document.getElementById("passwordModalTeamName").textContent = team.name;
+            document.getElementById("teamPasswordInput").value = "";
+            document.getElementById("teamPasswordError").classList.add("hidden");
+            document.getElementById("teamPasswordModal").classList.remove("hidden");
+            setTimeout(() => {
+                document.getElementById("teamPasswordInput").focus();
+            }, 100);
+        }
+
+        function closeTeamPasswordModal() {
+            pendingPasswordTeamId = null;
+            document.getElementById("teamPasswordModal").classList.add("hidden");
+        }
+
+        function verifyTeamPassword() {
+            if (!pendingPasswordTeamId) return;
+            const state = syncEngine.getState();
+            const teams = normalizeTeams(state.teams);
+            const team = teams.find(t => t.id === pendingPasswordTeamId);
+            if (!team) return;
+
+            const entered = document.getElementById("teamPasswordInput").value.trim();
+            const expected = String(team.password || "").trim();
+
+            if (entered.toLowerCase() === expected.toLowerCase()) {
+                const targetTeamId = pendingPasswordTeamId;
+                closeTeamPasswordModal();
+                selectTeamAndReveal(targetTeamId);
+            } else {
+                const errEl = document.getElementById("teamPasswordError");
+                const cardEl = document.getElementById("teamPasswordModalCard");
+                errEl.classList.remove("hidden");
+                cardEl.classList.remove("animate-shake");
+                void cardEl.offsetWidth;
+                cardEl.classList.add("animate-shake");
+            }
+        }
+
+        function selectTeamAndReveal(teamId) {
+            activeSelectedTeamId = teamId;
+            isEnvelopeOpened = false;
+
+            document.getElementById("teamSelectionCardWrapper").classList.add("hidden");
+            document.getElementById("leaderboardStageContainer").classList.add("hidden");
+            document.getElementById("revealStageContainer").classList.remove("hidden");
+
+            const state = syncEngine.getState();
+            updateActiveRevealStage(state);
+        }
+
+        function updateActiveRevealStage(state) {
+            const teams = normalizeTeams(state.teams);
+            const teamData = teams.find(t => t.id === activeSelectedTeamId);
+            if (!teamData) return;
+
+            const rankOrder = teamData.rankOrder || getRankFromPrizeTitle(teamData.prize);
+            const rankMeta = getRankMeta(rankOrder);
+            const isReadyToOpen = state.isPublished && (teamData.unlocked !== false);
+
+            document.getElementById("displayTeamName").textContent = teamData.name;
+
+            // Cập nhật điểm 3 vòng và tổng điểm Realtime
+            const r1 = Number(teamData.round1) || 0;
+            const r2 = Number(teamData.round2) || 0;
+            const r3 = Number(teamData.round3) || 0;
+            const total = r1 + r2 + r3;
+
+            document.getElementById("teamRound1Score").textContent = r1;
+            document.getElementById("teamRound2Score").textContent = r2;
+            document.getElementById("teamRound3Score").textContent = r3;
+            document.getElementById("teamTotalScore").textContent = total;
+
+            const badgeEl = document.getElementById("displayRankingBadge");
+            const envelopeCard = document.getElementById("envelopeCard");
+            const closedState = document.getElementById("envelopeClosedState");
+            const countdownState = document.getElementById("envelopeCountdownState");
+            const openedState = document.getElementById("envelopeOpenedState");
+            const warningState = document.getElementById("notPublishedWarning");
+
+            // Cập nhật dữ liệu giải thưởng bên trong phong bì
+            document.getElementById("prizeIconDisplay").textContent = rankMeta.icon;
+            document.getElementById("openedRankBadge").textContent = `🏆 THỨ HẠNG #${rankOrder} CHUNG CUỘC`;
+            document.getElementById("prizeTitleDisplay").textContent = teamData.prize;
+            document.getElementById("prizeDescDisplay").textContent = teamData.desc;
+
+            if (!isReadyToOpen) {
+                badgeEl.textContent = "Đang Thi Đấu & Cập Nhật Điểm";
+                envelopeCard.parentElement.classList.add("hidden");
+                warningState.classList.remove("hidden");
+                isEnvelopeOpened = false;
+            } else {
+                envelopeCard.parentElement.classList.remove("hidden");
+                warningState.classList.add("hidden");
+                countdownState.classList.add("hidden");
+
+                if (isEnvelopeOpened) {
+                    badgeEl.textContent = `Thứ hạng #${rankOrder}`;
+                    closedState.classList.add("hidden");
+                    openedState.classList.remove("hidden");
+                } else {
+                    badgeEl.textContent = state.hideRankOnCard ? "Đã Có Kết Quả Chung Cuộc" : `Thứ hạng #${rankOrder}`;
+                    closedState.classList.remove("hidden");
+                    openedState.classList.add("hidden");
+                }
+            }
+        }
+
+        function openEnvelopeWithCountdown() {
+            const state = syncEngine.getState();
+            const teams = normalizeTeams(state.teams);
+            const teamData = teams.find(t => t.id === activeSelectedTeamId);
+            if (!state.isPublished || (teamData && teamData.unlocked === false)) return;
+
+            const closedState = document.getElementById("envelopeClosedState");
+            const countdownState = document.getElementById("envelopeCountdownState");
+            const countdownNumber = document.getElementById("countdownNumber");
+
+            closedState.classList.add("hidden");
+            countdownState.classList.remove("hidden");
+
+            let count = 3;
+            countdownNumber.textContent = count;
+
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownNumber.textContent = count;
+                } else {
+                    clearInterval(timer);
+                    countdownState.classList.add("hidden");
+                    isEnvelopeOpened = true;
+                    updateActiveRevealStage(syncEngine.getState());
+                    fireCelebrationConfetti();
+                }
+            }, 650);
+        }
+
+        function fireCelebrationConfetti() {
+            confetti({
+                particleCount: 100,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+            setTimeout(() => {
+                confetti({
+                    particleCount: 60,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 }
+                });
+                confetti({
+                    particleCount: 60,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 }
+                });
+            }, 250);
+        }
+
+        function resetRevealView() {
+            activeSelectedTeamId = null;
+            isEnvelopeOpened = false;
+            document.getElementById("revealStageContainer").classList.add("hidden");
+            document.getElementById("leaderboardStageContainer").classList.add("hidden");
+            document.getElementById("teamSelectionCardWrapper").classList.remove("hidden");
+        }
+
+        function showLeaderboardView() {
+            activeSelectedTeamId = null;
+            document.getElementById("teamSelectionCardWrapper").classList.add("hidden");
+            document.getElementById("revealStageContainer").classList.add("hidden");
+            document.getElementById("leaderboardStageContainer").classList.remove("hidden");
+            fireCelebrationConfetti();
+        }
+
+        function toggleLeaderboardView() {
+            const lbContainer = document.getElementById("leaderboardStageContainer");
+            if (lbContainer.classList.contains("hidden")) {
+                showLeaderboardView();
+            } else {
+                resetRevealView();
+            }
+        }
+
+        function populateLeaderboard(state) {
+            const list = document.getElementById("leaderboardList");
+            if (!list) return;
+            list.innerHTML = "";
+
+            const sortedTeams = [...normalizeTeams(state.teams)].sort((a, b) => (a.rankOrder || 99) - (b.rankOrder || 99));
+
+            sortedTeams.forEach((team, index) => {
+                const rankOrder = team.rankOrder || index + 1;
+                const meta = getRankMeta(rankOrder);
+                const isUnlocked = state.isPublished && (team.unlocked !== false);
+                const totalScore = (Number(team.round1) || 0) + (Number(team.round2) || 0) + (Number(team.round3) || 0);
+
+                const item = document.createElement("div");
+                item.className = `p-5 rounded-2xl border-2 ${meta.border} shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition`;
+
+                if (isUnlocked) {
+                    item.innerHTML = `
+                        <div class="flex items-start sm:items-center space-x-4">
+                            <div class="text-4xl select-none">${meta.icon}</div>
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="${meta.badgeBg} px-3 py-0.5 rounded-full text-[11px] font-black uppercase">${meta.label}</span>
+                                    <span class="bg-omBlue text-white px-2.5 py-0.5 rounded-full text-[11px] font-extrabold">🎯 Tổng điểm: ${totalScore}</span>
+                                </div>
+                                <h4 class="text-xl font-black text-omDarkBlue mt-1">${team.name}</h4>
+                                <p class="text-sm font-bold text-omOrange">${team.prize}</p>
+                                <p class="text-xs font-black text-emerald-700 mt-1">💰 Tiền thưởng: ${team.desc}</p>
+                            </div>
+                        </div>
+                        <button onclick="requestTeamPasswordAndOpen('${team.id}')" class="self-start sm:self-center shrink-0 px-4 py-2 bg-omBlue hover:bg-omDarkBlue text-white font-bold rounded-xl text-xs shadow transition">
+                            Chi Tiết Đội
+                        </button>
+                    `;
+                } else {
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-4 opacity-75">
+                            <div class="text-3xl">🔒</div>
+                            <div>
+                                <span class="bg-slate-300 text-slate-700 px-3 py-0.5 rounded-full text-[11px] font-black uppercase">${meta.label}</span>
+                                <h4 class="text-lg font-extrabold text-slate-500 mt-1">Đang chờ BTC mở khóa kết quả...</h4>
+                            </div>
+                        </div>
+                    `;
+                }
+                list.appendChild(item);
+            });
+        }
+    </script>
+</body>
+
+</html>
