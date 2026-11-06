@@ -23,3 +23,4 @@ Hệ thống theo dõi Bảng điểm 3 Vòng chơi Realtime và Công bố Gi�
 ## 🔗 Liên Kết Sau Khi Kích Hoạt GitHub Pages
 - **Trang Người Chơi (Các Đội)**: `https://<username>.github.io/<repo-name>/`
 - **Trang Admin BTC**: `https://<username>.github.io/<repo-name>/admin.html`
+
