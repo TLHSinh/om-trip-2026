@@ -131,7 +131,7 @@
                 giải thưởng Realtime.</p>
 
             <form onsubmit="event.preventDefault(); verifyAdminPassword();" class="space-y-4">
-                <input type="password" id="adminPasswordInput" placeholder="Mật khẩu BTC (mặc định: admin123)"
+                <input type="password" id="adminPasswordInput" placeholder="Mật Khẩu BTC"
                     class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-omDarkBlue text-sm font-medium">
                 <button type="submit"
                     class="w-full py-3 bg-omDarkBlue hover:bg-blue-950 text-white font-bold rounded-xl shadow transition">
@@ -425,11 +425,11 @@
 
         function verifyAdminPassword() {
             const pass = document.getElementById("adminPasswordInput").value.trim();
-            if (pass === "admin123" || pass === "btc2026") {
+            if (pass === "adminom2026") {
                 sessionStorage.setItem("om_btc_logged_in", "true");
                 showDashboard();
             } else {
-                showModal("Sai mật khẩu", "Mật khẩu BTC không đúng. Mật khẩu mặc định là admin123", "fa-lock", "text-red-500");
+                showModal("Sai mật khẩu", "Mật khẩu BTC không đúng. Vui lòng kiểm tra lại!", "fa-lock", "text-red-500");
             }
         }
 
