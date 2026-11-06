@@ -104,18 +104,18 @@ function cleanPrizeDesc(desc) {
 }
 
 /**
- * Tách thông tin Tiền thưởng + Điểm 3 vòng + Mật khẩu được lưu gộp trong cột desc của Google Sheet
+ * Tách thông tin Tiền thưởng + Điểm 3 vòng + Mật khẩu + Timestamp được lưu gộp trong cột desc của Google Sheet
  */
 function parseDescAndMeta(rawDesc, idx) {
     const defaultPw = DEFAULT_PASSWORDS[idx] || `111${idx + 1}`;
     if (!rawDesc) {
-        return { cleanDesc: "500.000 VNĐ", round1: 0, round2: 0, round3: 0, password: defaultPw, hasMeta: false };
+        return { cleanDesc: "500.000 VNĐ", round1: 0, round2: 0, round3: 0, password: defaultPw, sheetUpdatedAt: 0, hasMeta: false };
     }
     const str = String(rawDesc);
     const parts = str.split("||");
     const baseDesc = cleanPrizeDesc(parts[0]);
 
-    let round1 = 0, round2 = 0, round3 = 0, password = defaultPw;
+    let round1 = 0, round2 = 0, round3 = 0, password = defaultPw, sheetUpdatedAt = 0;
     let hasMeta = false;
 
     if (parts[1]) {
@@ -125,27 +125,30 @@ function parseDescAndMeta(rawDesc, idx) {
         const r2Match = metaStr.match(/R2:\s*(-?\d+(?:\.\d+)?)/i);
         const r3Match = metaStr.match(/R3:\s*(-?\d+(?:\.\d+)?)/i);
         const pwMatch = metaStr.match(/PW:\s*([^|]+)/i);
+        const tsMatch = metaStr.match(/TS:\s*(\d+)/i);
 
         if (r1Match) round1 = Number(r1Match[1]) || 0;
         if (r2Match) round2 = Number(r2Match[1]) || 0;
         if (r3Match) round3 = Number(r3Match[1]) || 0;
         if (pwMatch) password = pwMatch[1].trim();
+        if (tsMatch) sheetUpdatedAt = Number(tsMatch[1]) || 0;
     }
 
-    return { cleanDesc: baseDesc, round1, round2, round3, password, hasMeta };
+    return { cleanDesc: baseDesc, round1, round2, round3, password, sheetUpdatedAt, hasMeta };
 }
 
 /**
- * Đóng gói Tiền thưởng + Điểm 3 vòng + Mật khẩu vào chuỗi desc để lưu lên Google Sheet
+ * Đóng gói Tiền thưởng + Điểm 3 vòng + Mật khẩu + Timestamp vào chuỗi desc để lưu lên Google Sheet
  * mà không cần sửa đổi cấu trúc cột trên Google Apps Script
  */
-function packDescWithMeta(team, idx) {
+function packDescWithMeta(team, idx, updatedAt = 0) {
     const baseDesc = cleanPrizeDesc(team.desc || "500.000 VNĐ");
     const r1 = Number(team.round1) || 0;
     const r2 = Number(team.round2) || 0;
     const r3 = Number(team.round3) || 0;
     const pw = String(team.password || DEFAULT_PASSWORDS[idx] || "1111").trim();
-    return `${baseDesc} || R1:${r1} | R2:${r2} | R3:${r3} | PW:${pw}`;
+    const ts = Number(updatedAt) || Date.now();
+    return `${baseDesc} || R1:${r1} | R2:${r2} | R3:${r3} | PW:${pw} | TS:${ts}`;
 }
 
 function getTeamTotalScore(team) {
@@ -195,6 +198,7 @@ function normalizeTeams(teams, fromSheet = false) {
             round2,
             round3,
             password,
+            sheetUpdatedAt: parsedMeta.sheetUpdatedAt || 0,
             rankOrder: Number(team.rankOrder) || (idx + 1),
             unlocked: team.unlocked !== false
         };
@@ -217,6 +221,8 @@ function getComparableTeamsSignature(teams) {
         }))
     );
 }
+
+const SHEET_SYNC_COOLDOWN_MS = 7000;
 
 class OMRealtimeSync {
     constructor(onStateChange, onStatusChange) {
@@ -270,7 +276,7 @@ class OMRealtimeSync {
             }
         }
 
-        // 3. Đồng bộ ngược lên Google Sheet (Đóng gói kèm Điểm 3 vòng & Mật khẩu vào cột desc)
+        // 3. Đồng bộ ngược lên Google Sheet (Đóng gói kèm Điểm 3 vòng, Mật khẩu & Timestamp vào cột desc)
         const sheetUrl = getActiveGoogleSheetUrl();
         if (sheetUrl) {
             try {
@@ -278,7 +284,7 @@ class OMRealtimeSync {
                     ...newState,
                     teams: newState.teams.map((t, idx) => ({
                         ...t,
-                        desc: packDescWithMeta(t, idx)
+                        desc: packDescWithMeta(t, idx, newState.updatedAt)
                     }))
                 };
                 fetch(sheetUrl, {
@@ -303,6 +309,7 @@ class OMRealtimeSync {
                 try {
                     const state = JSON.parse(e.newValue);
                     state.teams = normalizeTeams(state.teams, false);
+                    this.lastSaveTimestamp = Date.now();
                     if (this.onStateChange) this.onStateChange(state);
                 } catch (err) { }
             }
@@ -313,6 +320,7 @@ class OMRealtimeSync {
                 if (event.data) {
                     const state = event.data;
                     state.teams = normalizeTeams(state.teams, false);
+                    this.lastSaveTimestamp = Date.now();
                     localStorage.setItem(OM_STORAGE_KEY, JSON.stringify(state));
                     if (this.onStateChange) this.onStateChange(state);
                 }
@@ -359,6 +367,15 @@ class OMRealtimeSync {
                     const currentState = this.getState();
 
                     if (!currentState.updatedAt || incomingState.updatedAt >= currentState.updatedAt) {
+                        // Nếu tin nhắn Realtime mới hơn hoặc vừa mới được BTC gửi (trong vòng 8 giây),
+                        // tạm hoãn việc đọc dữ liệu cũ từ Google Sheet trong lúc Sheet đang xử lý ghi POST
+                        if (
+                            !currentState.updatedAt ||
+                            incomingState.updatedAt > currentState.updatedAt ||
+                            (incomingState.updatedAt && Date.now() - incomingState.updatedAt < 8000)
+                        ) {
+                            this.lastSaveTimestamp = Date.now();
+                        }
                         localStorage.setItem(OM_STORAGE_KEY, JSON.stringify(incomingState));
                         if (this.onStateChange) {
                             this.onStateChange(incomingState);
@@ -384,22 +401,43 @@ class OMRealtimeSync {
     // Tự động kiểm tra Google Sheets định kỳ (Polling) nếu có điền URL
     initGoogleSheetsSync() {
         const fetchFromGoogleSheet = async () => {
-            if (Date.now() - this.lastSaveTimestamp < 4500) return;
+            if (Date.now() - this.lastSaveTimestamp < SHEET_SYNC_COOLDOWN_MS) return;
 
             const sheetUrl = getActiveGoogleSheetUrl();
             if (!sheetUrl) return;
+
+            const fetchStartedAt = Date.now();
 
             try {
                 const response = await fetch(sheetUrl);
                 if (!response.ok) return;
                 const sheetData = await response.json();
 
-                if (Date.now() - this.lastSaveTimestamp < 4500) return;
+                // Nếu trong lúc đang tải Google Sheet mà có tín hiệu Realtime mới đến -> Bỏ qua kết quả cũ này
+                if (
+                    Date.now() - this.lastSaveTimestamp < SHEET_SYNC_COOLDOWN_MS ||
+                    this.lastSaveTimestamp >= fetchStartedAt
+                ) {
+                    return;
+                }
 
                 if (sheetData && Array.isArray(sheetData.teams) && sheetData.teams.length > 0) {
                     const currentState = this.getState();
-                    // Giải mã điểm 3 vòng & mật khẩu từ dữ liệu Google Sheet
+                    // Giải mã điểm 3 vòng, mật khẩu & timestamp từ dữ liệu Google Sheet
                     const normalizedSheetTeams = normalizeTeams(sheetData.teams, true);
+                    const sheetTimestamp = Math.max(...normalizedSheetTeams.map(t => Number(t.sheetUpdatedAt) || 0));
+
+                    // Chống ghi đè ngược (Race Condition):
+                    // Nếu dữ liệu trên Google Sheet có Timestamp cũ hơn trạng thái Realtime hiện tại (do Google Sheet chưa ghi xong POST),
+                    // tuyệt đối không ghi đè trạng thái cũ lên màn hình người dùng!
+                    if (
+                        sheetTimestamp > 0 &&
+                        currentState.updatedAt &&
+                        sheetTimestamp < currentState.updatedAt &&
+                        (Date.now() - currentState.updatedAt < 30000)
+                    ) {
+                        return;
+                    }
 
                     // Nếu trên Sheet chưa có metadata điểm (lần đầu tiên), giữ nguyên điểm hiện tại ở local
                     normalizedSheetTeams.forEach((st, idx) => {
@@ -422,7 +460,7 @@ class OMRealtimeSync {
                             ...currentState,
                             isPublished: Boolean(sheetData.isPublished),
                             teams: normalizedSheetTeams,
-                            updatedAt: Date.now()
+                            updatedAt: sheetTimestamp > 0 ? Math.max(sheetTimestamp, Date.now()) : Date.now()
                         };
 
                         if (!currentState.isPublished && sheetData.isPublished) {
