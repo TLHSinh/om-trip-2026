@@ -76,9 +76,21 @@
         }
 
         @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-8px); }
-            40%, 80% { transform: translateX(8px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20%,
+            60% {
+                transform: translateX(-8px);
+            }
+
+            40%,
+            80% {
+                transform: translateX(8px);
+            }
         }
 
         .animate-shake {
@@ -210,7 +222,8 @@
                                 <i class="fa-solid fa-trophy text-omYellow"></i>
                                 <span>Setup Điểm 3 Vòng, Mật Khẩu & Giải Thưởng 4 Đội</span>
                             </h4>
-                            <p class="text-xs text-slate-500 mt-0.5">Cập nhật điểm từng vòng Realtime cho mỗi đội. Mỗi đội dùng mật khẩu riêng để vào xem điểm và mở giải thưởng!</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Cập nhật điểm từng vòng Realtime cho mỗi đội. Mỗi
+                                đội dùng mật khẩu riêng để vào xem điểm và mở giải thưởng!</p>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
@@ -223,7 +236,8 @@
 
                             <div
                                 class="flex items-center space-x-2 bg-omBg/60 px-3.5 py-2 rounded-xl border border-omLightBlue/40">
-                                <input type="checkbox" id="hideRankOnCardCheckbox" onchange="saveTeamConfigsRealtime(false)"
+                                <input type="checkbox" id="hideRankOnCardCheckbox"
+                                    onchange="saveTeamConfigsRealtime(false)"
                                     class="w-4 h-4 accent-omDarkBlue rounded cursor-pointer">
                                 <label for="hideRankOnCardCheckbox"
                                     class="text-xs font-bold text-omDarkBlue cursor-pointer select-none">
@@ -262,7 +276,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2 text-emerald-800">
                                 <i class="fa-solid fa-table text-lg text-emerald-600"></i>
-                                <h4 class="text-sm font-black text-omDarkBlue">Kết Nối Google Sheet Database</h4>
+                                <h4 class="text-sm font-black text-omDarkBlue">Kết Nối Database</h4>
                             </div>
                             <span id="sheetLockBadge"
                                 class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center space-x-1 bg-amber-100 text-amber-800 border border-amber-300 shadow-sm">
@@ -271,7 +285,8 @@
                             </span>
                         </div>
                         <p id="sheetLockDesc" class="text-[11px] text-slate-500 leading-relaxed">
-                            Link Database đang được khóa và ẩn để tránh thao tác sửa nhầm. Nhập mật khẩu để xem hoặc chỉnh sửa.
+                            Link Database đang được khóa và ẩn để tránh thao tác sửa nhầm. Nhập mật khẩu để xem hoặc
+                            chỉnh sửa.
                         </p>
                         <div class="space-y-2">
                             <input type="password" id="googleSheetUrlInput" readonly
@@ -435,12 +450,14 @@
             </div>
             <div>
                 <h3 class="text-lg font-black text-omDarkBlue">Mở Khóa Google Sheet</h3>
-                <p class="text-xs text-slate-500 mt-1">Nhập mật khẩu để xem hoặc chỉnh sửa liên kết Google Sheet Database.</p>
+                <p class="text-xs text-slate-500 mt-1">Nhập mật khẩu để xem hoặc chỉnh sửa liên kết Google Sheet
+                    Database.</p>
             </div>
             <form onsubmit="event.preventDefault(); submitUnlockGoogleSheet();" class="space-y-3">
                 <input type="password" id="unlockSheetPasswordInput" placeholder="Nhập mật khẩu mở khóa"
                     class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-center font-bold">
-                <p id="unlockSheetError" class="text-xs font-bold text-red-500 hidden">Mật khẩu không đúng. Vui lòng thử lại!</p>
+                <p id="unlockSheetError" class="text-xs font-bold text-red-500 hidden">Mật khẩu không đúng. Vui lòng thử
+                    lại!</p>
                 <div class="flex gap-2 pt-1">
                     <button type="button" onclick="closeUnlockGoogleSheetModal()"
                         class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition">
@@ -734,7 +751,7 @@
             fixedTeams.forEach((team, index) => {
                 const teamNum = index + 1;
                 team.id = `team${teamNum}`;
-                
+
                 // Tự động tính rankOrder từ danh hiệu giải thưởng hiện tại
                 const rankOrder = getRankFromPrizeTitle(team.prize);
                 team.rankOrder = rankOrder;
