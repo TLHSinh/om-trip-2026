@@ -353,7 +353,7 @@ class OMRealtimeSync {
             this.isConnected = true;
             const sheetUrl = getActiveGoogleSheetUrl();
             const statusLabel = sheetUrl
-                ? "Google Sheet + Realtime Live"
+                ? "Database + Realtime Live"
                 : `Realtime Live (Mã phòng: ${this.roomId})`;
             this.onStatusChange("online", statusLabel);
             this.client.subscribe(this.topic, { qos: 1 });
