@@ -74,6 +74,16 @@
         .animate-float {
             animation: float 3s ease-in-out infinite;
         }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .animate-shake {
+            animation: shake 0.3s ease-in-out;
+        }
     </style>
 </head>
 
@@ -249,26 +259,51 @@
                     <!-- CẤU HÌNH LIÊN KẾT GOOGLE SHEET -->
                     <div
                         class="bg-white/95 backdrop-blur-md rounded-3xl p-5 shadow-xl border-2 border-emerald-400 space-y-3 text-left">
-                        <div class="flex items-center space-x-2 text-emerald-800">
-                            <i class="fa-solid fa-table text-lg text-emerald-600"></i>
-                            <h4 class="text-sm font-black text-omDarkBlue">Kết Nối Google Sheet Database</h4>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 text-emerald-800">
+                                <i class="fa-solid fa-table text-lg text-emerald-600"></i>
+                                <h4 class="text-sm font-black text-omDarkBlue">Kết Nối Google Sheet Database</h4>
+                            </div>
+                            <span id="sheetLockBadge"
+                                class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center space-x-1 bg-amber-100 text-amber-800 border border-amber-300 shadow-sm">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Đã Khóa Bảo Vệ</span>
+                            </span>
                         </div>
-                        <p class="text-[11px] text-slate-500 leading-relaxed">
-                            Dán link Web App Apps Script để đồng bộ với Google Sheet (hoặc điền vào dòng 10 file <code
-                                class="bg-slate-100 px-1 py-0.5 rounded text-slate-700">sync.js</code>):
+                        <p id="sheetLockDesc" class="text-[11px] text-slate-500 leading-relaxed">
+                            Link Database đang được khóa và ẩn để tránh thao tác sửa nhầm. Nhập mật khẩu để xem hoặc chỉnh sửa.
                         </p>
                         <div class="space-y-2">
-                            <input type="text" id="googleSheetUrlInput"
+                            <input type="password" id="googleSheetUrlInput" readonly
+                                value="••••••••••••••••••••••••••••••••••••••••••••"
                                 placeholder="https://script.google.com/macros/s/.../exec"
-                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:border-emerald-500">
-                            <div class="flex gap-2">
-                                <button type="button" onclick="saveGoogleSheetUrlFromAdmin()"
-                                    class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
-                                    Lưu & Kết Nối
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none bg-slate-100 text-slate-400 cursor-not-allowed select-none">
+
+                            <!-- Nhóm nút khi đang Khóa -->
+                            <div id="sheetLockedButtonGroup">
+                                <button type="button" onclick="openUnlockGoogleSheetModal()"
+                                    class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow transition flex items-center justify-center space-x-1.5">
+                                    <i class="fa-solid fa-key text-amber-400"></i>
+                                    <span>Mở Khóa Xem & Sửa Link</span>
                                 </button>
-                                <button type="button" onclick="testGoogleSheetConnection()"
-                                    class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
-                                    Kiểm Tra
+                            </div>
+
+                            <!-- Nhóm nút khi đã Mở Khóa -->
+                            <div id="sheetUnlockedButtonGroup" class="hidden space-y-2">
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="saveGoogleSheetUrlFromAdmin()"
+                                        class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
+                                        Lưu & Kết Nối
+                                    </button>
+                                    <button type="button" onclick="testGoogleSheetConnection()"
+                                        class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+                                        Kiểm Tra
+                                    </button>
+                                </div>
+                                <button type="button" onclick="lockGoogleSheetConfig()"
+                                    class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition flex items-center justify-center space-x-1">
+                                    <i class="fa-solid fa-lock"></i>
+                                    <span>Khóa Lại Cấu Hình</span>
                                 </button>
                             </div>
                         </div>
@@ -385,6 +420,41 @@
         </div>
     </div>
 
+    <!-- Modal Mở Khóa Cấu Hình Google Sheet -->
+    <div id="unlockGoogleSheetModal"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div id="unlockGoogleSheetCard"
+            class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4 border-4 border-emerald-500 relative transition-transform">
+            <button onclick="closeUnlockGoogleSheetModal()"
+                class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div
+                class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full mx-auto flex items-center justify-center text-2xl shadow">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-black text-omDarkBlue">Mở Khóa Google Sheet</h3>
+                <p class="text-xs text-slate-500 mt-1">Nhập mật khẩu để xem hoặc chỉnh sửa liên kết Google Sheet Database.</p>
+            </div>
+            <form onsubmit="event.preventDefault(); submitUnlockGoogleSheet();" class="space-y-3">
+                <input type="password" id="unlockSheetPasswordInput" placeholder="Nhập mật khẩu mở khóa"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-center font-bold">
+                <p id="unlockSheetError" class="text-xs font-bold text-red-500 hidden">Mật khẩu không đúng. Vui lòng thử lại!</p>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" onclick="closeUnlockGoogleSheetModal()"
+                        class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs transition">
+                        Đóng
+                    </button>
+                    <button type="submit"
+                        class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow transition">
+                        Xác Nhận
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Shared Sync Logic -->
     <script src="sync.js"></script>
 
@@ -438,31 +508,133 @@
             document.getElementById("adminDashboardPanel").classList.remove("hidden");
             renderAdminDashboard(syncEngine.getState());
             setupPlayerQRCode();
+            initGoogleSheetConfigSecurity();
+        }
 
-            const sheetInput = document.getElementById("googleSheetUrlInput");
-            if (sheetInput) {
-                sheetInput.value = (typeof getActiveGoogleSheetUrl === "function") ? getActiveGoogleSheetUrl() : "";
+        let isSheetConfigUnlocked = false;
+        let cachedGoogleSheetUrl = "";
+
+        function initGoogleSheetConfigSecurity() {
+            cachedGoogleSheetUrl = (typeof getActiveGoogleSheetUrl === "function") ? getActiveGoogleSheetUrl() : "";
+            lockGoogleSheetConfig();
+        }
+
+        function openUnlockGoogleSheetModal() {
+            document.getElementById("unlockSheetPasswordInput").value = "";
+            document.getElementById("unlockSheetError").classList.add("hidden");
+            document.getElementById("unlockGoogleSheetModal").classList.remove("hidden");
+            setTimeout(() => {
+                document.getElementById("unlockSheetPasswordInput").focus();
+            }, 100);
+        }
+
+        function closeUnlockGoogleSheetModal() {
+            document.getElementById("unlockGoogleSheetModal").classList.add("hidden");
+        }
+
+        function submitUnlockGoogleSheet() {
+            const pass = document.getElementById("unlockSheetPasswordInput").value.trim();
+            if (pass === "updateggsheet") {
+                isSheetConfigUnlocked = true;
+                closeUnlockGoogleSheetModal();
+                applySheetUnlockUI();
+            } else {
+                const err = document.getElementById("unlockSheetError");
+                const card = document.getElementById("unlockGoogleSheetCard");
+                err.classList.remove("hidden");
+                card.classList.remove("animate-shake");
+                void card.offsetWidth;
+                card.classList.add("animate-shake");
             }
         }
 
+        function applySheetUnlockUI() {
+            const input = document.getElementById("googleSheetUrlInput");
+            const badge = document.getElementById("sheetLockBadge");
+            const desc = document.getElementById("sheetLockDesc");
+            const lockedGroup = document.getElementById("sheetLockedButtonGroup");
+            const unlockedGroup = document.getElementById("sheetUnlockedButtonGroup");
+
+            if (!input) return;
+
+            input.type = "text";
+            input.readOnly = false;
+            input.value = cachedGoogleSheetUrl;
+            input.classList.remove("bg-slate-100", "text-slate-400", "cursor-not-allowed", "select-none");
+            input.classList.add("bg-white", "text-slate-800");
+
+            if (badge) {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center space-x-1 bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm";
+                badge.innerHTML = '<i class="fa-solid fa-lock-open"></i><span>Đã Mở Khóa</span>';
+            }
+
+            if (desc) {
+                desc.textContent = "Bạn đang ở chế độ xem & chỉnh sửa. Sau khi sửa xong hoặc kiểm tra xong, hãy bấm 'Lưu & Kết Nối' hoặc 'Khóa Lại'.";
+            }
+
+            if (lockedGroup) lockedGroup.classList.add("hidden");
+            if (unlockedGroup) unlockedGroup.classList.remove("hidden");
+            input.focus();
+        }
+
+        function lockGoogleSheetConfig() {
+            isSheetConfigUnlocked = false;
+            const input = document.getElementById("googleSheetUrlInput");
+            const badge = document.getElementById("sheetLockBadge");
+            const desc = document.getElementById("sheetLockDesc");
+            const lockedGroup = document.getElementById("sheetLockedButtonGroup");
+            const unlockedGroup = document.getElementById("sheetUnlockedButtonGroup");
+
+            if (!input) return;
+
+            input.type = "password";
+            input.readOnly = true;
+            input.value = "••••••••••••••••••••••••••••••••••••••••••••";
+            input.classList.remove("bg-white", "text-slate-800");
+            input.classList.add("bg-slate-100", "text-slate-400", "cursor-not-allowed", "select-none");
+
+            if (badge) {
+                badge.className = "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase flex items-center space-x-1 bg-amber-100 text-amber-800 border border-amber-300 shadow-sm";
+                badge.innerHTML = '<i class="fa-solid fa-lock"></i><span>Đã Khóa Bảo Vệ</span>';
+            }
+
+            if (desc) {
+                desc.textContent = "Link Database đang được khóa và ẩn để tránh thao tác sửa nhầm. Nhập mật khẩu để xem hoặc chỉnh sửa.";
+            }
+
+            if (lockedGroup) lockedGroup.classList.remove("hidden");
+            if (unlockedGroup) unlockedGroup.classList.add("hidden");
+        }
+
         function saveGoogleSheetUrlFromAdmin() {
+            if (!isSheetConfigUnlocked) {
+                showModal("Đang Khóa", "Vui lòng mở khóa cấu hình trước khi lưu!", "fa-lock", "text-amber-500");
+                return;
+            }
             const input = document.getElementById("googleSheetUrlInput");
             const val = input.value.trim();
+            if (!val || val.includes("••••")) {
+                showModal("Lỗi URL", "Vui lòng nhập đường link Google Sheet hợp lệ!", "fa-triangle-exclamation", "text-red-500");
+                return;
+            }
+            cachedGoogleSheetUrl = val;
             localStorage.setItem("om_google_sheet_api_url", val);
             showModal("Đã Lưu Link Google Sheet", "Hệ thống sẽ đồng bộ trực tiếp với Google Sheet này!", "fa-circle-check", "text-emerald-500");
             setTimeout(() => window.location.reload(), 1200);
         }
 
         async function testGoogleSheetConnection() {
-            const input = document.getElementById("googleSheetUrlInput");
-            const val = input.value.trim();
-            if (!val) {
-                showModal("Chưa Nhập Link", "Vui lòng dán link Google Apps Script Web App trước khi kiểm tra.", "fa-triangle-exclamation", "text-amber-500");
+            const urlToTest = isSheetConfigUnlocked
+                ? document.getElementById("googleSheetUrlInput").value.trim()
+                : cachedGoogleSheetUrl;
+
+            if (!urlToTest || urlToTest.includes("••••")) {
+                showModal("Chưa Có Link", "Vui lòng mở khóa cấu hình và kiểm tra link Google Apps Script Web App trước khi kiểm tra.", "fa-triangle-exclamation", "text-amber-500");
                 return;
             }
             try {
                 showModal("Đang Kiểm Tra...", "Đang kết nối thử tới Google Sheet...", "fa-spinner fa-spin", "text-omBlue");
-                const res = await fetch(val);
+                const res = await fetch(urlToTest);
                 const data = await res.json();
                 if (data && data.teams) {
                     showModal("Kết Nối Thành Công!", `Đã lấy được dữ liệu của ${data.teams.length} đội từ Google Sheet! Trạng thái publish: ${data.isPublished}`, "fa-circle-check", "text-emerald-500");
